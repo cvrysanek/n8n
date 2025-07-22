@@ -62,9 +62,17 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
 
-	/** Whether to include a label for workflow name on workflow metrics. */
-	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
-	includeWorkflowNameLabel: boolean = false;
+        /** Whether to include a label for workflow name on workflow metrics. */
+        @Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
+        includeWorkflowNameLabel: boolean = false;
+
+        /** Whether to expose execution duration histograms. */
+        @Env('N8N_METRICS_INCLUDE_WORKFLOW_DURATION')
+        includeWorkflowDuration: boolean = false;
+
+        /** Whether to expose execution memory usage metrics. */
+        @Env('N8N_METRICS_INCLUDE_WORKFLOW_MEMORY')
+        includeWorkflowMemory: boolean = false;
 }
 
 @Config

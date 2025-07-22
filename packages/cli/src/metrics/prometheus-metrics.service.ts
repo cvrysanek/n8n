@@ -7,7 +7,7 @@ import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
-import promClient, { type Counter, type Gauge } from 'prom-client';
+import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
@@ -34,6 +34,10 @@ export class PrometheusMetricsService {
 
 	private readonly gauges: Record<string, Gauge<string>> = {};
 
+	private readonly histograms: Record<string, Histogram<string>> = {};
+
+	private readonly workflowMemoryStart = new Map<string, number>();
+
 	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
 
 	private readonly includes: Includes = {
@@ -55,6 +59,13 @@ export class PrometheusMetricsService {
 		},
 	};
 
+	private getWorkflowLabelNames(): string[] {
+		const names: string[] = [];
+		if (this.includes.labels.workflowId) names.push('workflow_id');
+		if (this.includes.labels.workflowName) names.push('workflow_name');
+		return names;
+	}
+
 	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.initDefaultMetrics();
@@ -64,6 +75,7 @@ export class PrometheusMetricsService {
 		this.initRouteMetrics(app);
 		this.initQueueMetrics();
 		this.initActiveWorkflowCountMetric();
+		this.initWorkflowMetrics();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -308,6 +320,55 @@ export class PrometheusMetricsService {
 					this.set(activeWorkflowCount);
 				}
 			},
+		});
+	}
+
+	private initWorkflowMetrics() {
+		const { includeWorkflowDuration, includeWorkflowMemory } = this.globalConfig.endpoints.metrics;
+
+		if (!includeWorkflowDuration && !includeWorkflowMemory) return;
+
+		const labelNames = this.getWorkflowLabelNames();
+
+		if (includeWorkflowDuration) {
+			this.histograms.workflowDuration = new promClient.Histogram({
+				name: this.prefix + 'workflow_duration_seconds',
+				help: 'Workflow execution duration in seconds.',
+				labelNames,
+			});
+		}
+
+		if (includeWorkflowMemory) {
+			this.histograms.workflowMemory = new promClient.Histogram({
+				name: this.prefix + 'workflow_memory_bytes',
+				help: 'Workflow memory usage in bytes.',
+				labelNames,
+			});
+
+			this.eventService.on('workflow-pre-execute', ({ executionId }) => {
+				this.workflowMemoryStart.set(executionId, process.memoryUsage().rss);
+			});
+		}
+
+		this.eventService.on('workflow-post-execute', ({ executionId, workflow, runData }) => {
+			const labels = this.buildWorkflowLabels({
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+			});
+
+			if (includeWorkflowDuration && runData?.startedAt && runData.stoppedAt) {
+				const duration = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
+				this.histograms.workflowDuration.observe(labels, duration);
+			}
+
+			if (includeWorkflowMemory) {
+				const start = this.workflowMemoryStart.get(executionId);
+				if (start !== undefined) {
+					const diff = process.memoryUsage().rss - start;
+					this.histograms.workflowMemory.observe(labels, diff);
+					this.workflowMemoryStart.delete(executionId);
+				}
+			}
 		});
 	}
 

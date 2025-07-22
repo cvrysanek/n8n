@@ -177,8 +177,10 @@ describe('GlobalConfig', () => {
 				enable: false,
 				prefix: 'n8n_',
 				includeWorkflowIdLabel: false,
-				includeWorkflowNameLabel: false,
-				includeDefaultMetrics: true,
+                                includeWorkflowNameLabel: false,
+                                includeWorkflowDuration: false,
+                                includeWorkflowMemory: false,
+                                includeDefaultMetrics: true,
 				includeMessageEventBusMetrics: false,
 				includeNodeTypeLabel: false,
 				includeCacheMetrics: false,
@@ -391,10 +393,10 @@ describe('GlobalConfig', () => {
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
-				metrics: {
-					...defaultConfig.endpoints.metrics,
-					enable: true,
-				},
+                                metrics: {
+                                        ...defaultConfig.endpoints.metrics,
+                                        enable: true,
+                                },
 			},
 			nodes: {
 				...defaultConfig.nodes,
