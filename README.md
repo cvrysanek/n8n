@@ -45,6 +45,8 @@ Access the editor at http://localhost:5678
 Set `N8N_METRICS` to `true` to expose Prometheus metrics at `/metrics`.
 Use `N8N_METRICS_INCLUDE_WORKFLOW_DURATION` to enable workflow duration histograms
 and `N8N_METRICS_INCLUDE_WORKFLOW_MEMORY` to collect memory usage metrics.
+An example Grafana dashboard for these metrics is available in
+`grafana/n8n-prometheus-dashboard.json`.
 
 ## Support
 

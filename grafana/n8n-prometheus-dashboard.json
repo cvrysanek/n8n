@@ -1,0 +1,64 @@
+{
+  "title": "n8n Metrics",
+  "uid": "n8n-metrics",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU usage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "-"
+      },
+      "targets": [
+        { "expr": "rate(n8n_process_cpu_seconds_total[5m])" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Resident memory",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "-"
+      },
+      "targets": [
+        { "expr": "n8n_process_resident_memory_bytes" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Workflow duration (95th %)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "-"
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(n8n_workflow_duration_seconds_bucket[5m])) by (le))" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Workflow memory (95th %)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "-"
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(n8n_workflow_memory_bytes_bucket[5m])) by (le))" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    }
+  ]
+}
