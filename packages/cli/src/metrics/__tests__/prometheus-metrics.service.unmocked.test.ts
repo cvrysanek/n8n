@@ -227,3 +227,50 @@ active_workflow_count 2"
 `);
 	});
 });
+
+describe('workflow execution metrics', () => {
+        test('records duration and memory', async () => {
+                const globalConfig = mockInstance(GlobalConfig, {
+                        endpoints: {
+                                metrics: {
+                                        prefix: '',
+                                        includeWorkflowDuration: true,
+                                        includeWorkflowMemory: true,
+                                },
+                        },
+                });
+
+                const localEventService = new EventService();
+
+                const prometheusMetricsService = new PrometheusMetricsService(
+                        cacheService,
+                        eventBus,
+                        globalConfig,
+                        localEventService,
+                        instanceSettings,
+                        workflowRepository,
+                );
+
+                await prometheusMetricsService.init(app);
+
+                jest
+                        .spyOn(process, 'memoryUsage')
+                        .mockReturnValueOnce({ rss: 1000 } as any)
+                        .mockReturnValueOnce({ rss: 1500 } as any);
+
+                localEventService.emit('workflow-pre-execute', { executionId: '1', data: {} } as any);
+                localEventService.emit('workflow-post-execute', {
+                        executionId: '1',
+                        workflow: { id: 'wf1', name: 'wf' },
+                        runData: { startedAt: new Date(0), stoppedAt: new Date(1000) },
+                } as any);
+
+                const durationMetric = await promClient.register.getSingleMetricAsString('workflow_duration_seconds');
+                expect(durationMetric).toContain('# TYPE workflow_duration_seconds histogram');
+                expect(durationMetric).toContain('workflow_duration_seconds_sum 1');
+
+                const memoryMetric = await promClient.register.getSingleMetricAsString('workflow_memory_bytes');
+                expect(memoryMetric).toContain('# TYPE workflow_memory_bytes histogram');
+                expect(memoryMetric).toContain('workflow_memory_bytes_sum 500');
+        });
+});

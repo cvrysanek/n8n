@@ -40,6 +40,12 @@ Access the editor at http://localhost:5678
 - 👥 [Community Forum](https://community.n8n.io)
 - 📖 [Community Tutorials](https://community.n8n.io/c/tutorials/28)
 
+## Metrics configuration
+
+Set `N8N_METRICS` to `true` to expose Prometheus metrics at `/metrics`.
+Use `N8N_METRICS_INCLUDE_WORKFLOW_DURATION` to enable workflow duration histograms
+and `N8N_METRICS_INCLUDE_WORKFLOW_MEMORY` to collect memory usage metrics.
+
 ## Support
 
 Need help? Our community forum is the place to get support and connect with other users:

@@ -77,6 +77,7 @@ describe('PrometheusMetricsService', () => {
 
 		promClient.Counter.prototype.inc = jest.fn();
 		(promClient.validateMetricName as jest.Mock).mockReturnValue(true);
+		promClient.Histogram.prototype.observe = jest.fn();
 	});
 
 	afterEach(() => {
@@ -559,6 +560,60 @@ describe('PrometheusMetricsService', () => {
 				(call) => call[0]?.name === 'n8n_instance_role_leader',
 			);
 			expect(hasInstanceRoleMetric).toBe(false);
+		});
+	});
+
+	describe('workflow execution metrics', () => {
+		const getPreHandler = () =>
+			(eventService.on as jest.Mock).mock.calls.find((c) => c[0] === 'workflow-pre-execute')?.[1];
+		const getPostHandler = () =>
+			(eventService.on as jest.Mock).mock.calls.find((c) => c[0] === 'workflow-post-execute')?.[1];
+
+		it('records duration and memory usage', async () => {
+			globalConfig.endpoints.metrics.includeWorkflowDuration = true;
+			globalConfig.endpoints.metrics.includeWorkflowMemory = true;
+
+			await prometheusMetricsService.init(app);
+
+			const pre = getPreHandler();
+			const post = getPostHandler();
+
+			expect(pre).toBeDefined();
+			expect(post).toBeDefined();
+
+			jest
+				.spyOn(process, 'memoryUsage')
+				.mockReturnValueOnce({ rss: 1000 } as any)
+				.mockReturnValueOnce({ rss: 1500 } as any);
+
+			pre?.({ executionId: '1', data: {} } as any);
+			post?.({
+				executionId: '1',
+				workflow: { id: 'wf1', name: 'Wf' },
+				runData: { startedAt: new Date(0), stoppedAt: new Date(1000) },
+			} as any);
+
+			expect(promClient.Histogram).toHaveBeenCalledWith({
+				name: 'n8n_workflow_duration_seconds',
+				help: 'Workflow execution duration in seconds.',
+				labelNames: [],
+			});
+			expect(promClient.Histogram).toHaveBeenCalledWith({
+				name: 'n8n_workflow_memory_bytes',
+				help: 'Workflow memory usage in bytes.',
+				labelNames: [],
+			});
+
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.histograms.workflowDuration.observe).toHaveBeenCalledWith(
+				{},
+				1,
+			);
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.histograms.workflowMemory.observe).toHaveBeenCalledWith(
+				{},
+				500,
+			);
 		});
 	});
 });
